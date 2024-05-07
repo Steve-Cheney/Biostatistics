@@ -17,6 +17,7 @@ library(readxl)
 library(dplyr)
 library(ggplot2)
 library(gridExtra)
+library(stats)
 ```
 
 ```{r}
@@ -196,8 +197,235 @@ print(anova(lm_protein_s4))
 Every p-value shows us a statistically significant correlation (P <0.05), where all but the protein model for S4 is highly significant.Our Anova analysis in the mRNA models shows both S3 and S4 showing extremely strong F-statistics (1569.4 and 1729.8 respectively), with corresponding p-values indicating the predictor (human mRNA mean) is a very strong determinant of the response (chimp mRNA mean). In the protein models, the F-statistics are lower (47.394 for S3 and 8.0642 for S4), reflecting the weaker relationships in protein models compared to mRNA models. The significance levels are still strong enough to affirm the relationships despite this.The mRNA models for both samples S3 and S4 exhibit very high R-squared values (approximately 91.7%), indicating excellent fits that explain a significant proportion of the variance in chimp mRNA levels based on human mRNA levels. In contrast, the protein models show much lower R-squared values, with 25.16% for S3 and a mere 4.88% for S4, indicating moderate to poor fits and suggesting that human protein levels are less predictive of chimp protein levels.
 
 ## Question 4
+```{r}
+plot_relationships <- function(data, sample_name) {
+  # Plot for Chimp
+  p1 <- ggplot(data, aes(x = chimp_mrna_mean, y = chimp_protein_mean)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE, color = "blue") +
+    labs(title = paste("Chimp mRNA vs Protein Levels in", sample_name),
+         x = "Mean mRNA Levels",
+         y = "Mean Protein Levels",
+         caption = "Blue line = linear fit")
+
+  # Plot for Human
+  p2 <- ggplot(data, aes(x = human_mrna_mean, y = human_protein_mean)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE, color = "red") +
+    labs(title = paste("Human mRNA vs Protein Levels in", sample_name),
+         x = "Mean mRNA Levels",
+         y = "Mean Protein Levels",
+         caption = "Red line = linear fit")
+  
+    gridExtra::grid.arrange(p1, p2, nrow = 1)
+}
+plot_relationships(s3_table, "Sample S3")
+plot_relationships(s4_table, "Sample S4")
+```
+
+No real trends are apparent across the plots. mRNA expression levels do not consistently correlate with changes in protein expression for either species in both datasets. These plots also exhibit more outliers and greater variability compared to my earlier plots and analysis.
 
 
+## Question 5
+```{r}
+# diffs for s3
+s3_table$difference_mrna <- s3_table$human_mrna_mean - s3_table$chimp_mrna_mean
+s3_table$difference_protein <- s3_table$human_protein_mean - s3_table$chimp_protein_mean
 
+# diffs for s4
+s4_table$difference_mrna <- s4_table$human_mrna_mean - s4_table$chimp_mrna_mean
+s4_table$difference_protein <- s4_table$human_protein_mean - s4_table$chimp_protein_mean
+
+plot_differences <- function(data, sample_name) {
+  ggplot(data, aes(x = difference_mrna, y = difference_protein)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE, color = "blue") +
+    labs(title = paste("Difference in", sample_name),
+         x = "Mean mRNA Levels",
+         y = "Mean Protein Levels",
+         caption = "Blue line = linear fit")
+}
+
+p1 <- plot_differences(s3_table, "Sample S3")
+p2 <- plot_differences(s4_table, "Sample S4")
+
+# Display the plots
+library(gridExtra)
+grid.arrange(p1, p2, nrow = 1)
+
+```
+
+```{r}
+s3_diffs <- s3_means %>%
+  reframe(
+    mrna_diff = apply(.[,1:2], 1, diff),
+    protein_diff = -1 * apply(.[,3:4], 1, diff)
+  )
+
+s3_table <- s3_table %>%
+  mutate(
+    mrna_diff = apply(.[,22:23], 1, diff),
+    protein_diff = -1 * apply(.[,24:25], 1, diff)
+  )
+
+# Plot
+s3_diffs_plot <- ggplot(data = s3_table, aes(x = mrna_diff, y = protein_diff)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0) + 
+  geom_vline(xintercept = 0) + 
+  geom_abline(intercept = 0, slope = 1) +
+  ggtitle("S3 Comparison")
+
+s4_diffs <- s4_means %>%
+  reframe(
+    mrna_diff = apply(.[,1:2], 1, diff),
+    protein_diff = -1 * apply(.[,3:4], 1, diff)
+  )
+
+s4_table <- s4_table %>%
+  mutate(
+    mrna_diff = apply(.[,22:23], 1, diff),
+    protein_diff = -1 * apply(.[,24:25], 1, diff)
+  )
+
+# Plot
+s4_diffs_plot <- ggplot(data = s4_table, aes(x = mrna_diff, y = protein_diff)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0) + 
+  geom_vline(xintercept = 0) + 
+  geom_abline(intercept = 0, slope = 1) +
+  ggtitle("S4 Comparison")
+
+grid.arrange(s3_diffs_plot, s4_diffs_plot, ncol = 2)
+
+```
+
+My results here show a similar result from the S2 figures. The main difference I can see here is that the authors of the original paper may have removed some outliers especially in the S4 comparison, as I see an extreme outlier down around (0.5,-5). The authors do mention using a base 2 logarithmic scale, I wonder if this may condense the plots and produce more similar results true to the original paper.
+
+## Question 6
+```{r}
+# Correlation for S3
+correlation_s3 <- cor(s3_table$mrna_diff, s3_table$protein_diff, use = "complete.obs")
+print(paste("Correlation coefficient for differences between human and chimp protein and mRNA levels in S3:", correlation_s3))
+
+# Correlation for S4
+correlation_s4 <- cor(s4_table$mrna_diff, s4_table$protein_diff, use = "complete.obs")
+print(paste("Correlation coefficient for differences between human and chimp protein and mRNA levels in S4:", correlation_s4))
+
+```
+The correlation mentioned in the paper are 0.37 for S3 and 0.28 for S4. My correlation values are similar enough in nature to make sense compared to the author's results, however an interesting thing is that their S4 correlation is positive while mine is negative. They don't mention explicitly why this is, but it may be an absolute value on their end as their goal is to show the correlation relative to the species and not necessarily care about the "direction" of the correlation. 
+
+## Question 7
+```{r}
+lm_s3 <- lm(protein_diff ~ mrna_diff, data = s3_table)
+lm_s4 <- lm(protein_diff ~ mrna_diff, data = s4_table)
+
+print("Summary of linear model for S3:")
+print(summary(lm_s3))
+
+print("Summary of linear model for S4:")
+print(summary(lm_s4))
+
+# ANOVA
+print("ANOVA for the linear model of S3:")
+print(anova(lm_s3))
+
+print("ANOVA for the linear model of S4:")
+print(anova(lm_s4))
+
+# Plot Diagnostics
+par(mfrow = c(2, 2))
+
+cat("\nDiagnostics for s3:\n")
+plot(lm_s3, which = 1:4, main = "s3 Diagnostic")
+par(mfrow = c(1, 1))
+
+par(mfrow = c(2, 2))
+
+cat("\nDiagnostics for s4:\n")
+plot(lm_s4, which = 1:4, main = "s4 Diagnostic")
+
+par(mfrow = c(1, 1))
+```
+
+For the S3 sample, there is a significant positive relationship, with a coefficient of 0.6019 indicating that increases in mRNA differences are associated with increases in protein differences (p-value = 4.5e-06). This model explains about 13.91% of the variance in protein differences, as indicated by the R-squared value. The ANOVA results reinforce this significant relationship with an F-statistic of 22.78. The S4 sample exhibits a significant negative relationship between mRNA and protein differences, with a coefficient of -0.4774 (p-value = 0.000463), but this model has a lower explanatory power with an R-squared of 7.535%. The negative coefficient implies that increases in mRNA differences correspond to decreases in protein differences, a reversal of the trend observed in the S3 sample. The ANOVA for S4 confirms the significance of the relationship, with an F-statistic of 12.79.
+
+## Question 8
+```{r}
+
+# t-test function
+t.test.hc <- function(human_data, chimp_data, var.equal = TRUE) {
+  t.test(human_data, chimp_data, var.equal = var.equal)$p.value
+}
+
+# Set indices and vectors for pvals
+human_mRNA_indices <- 10:15
+chimp_mRNA_indices <- 4:9
+human_protein_indices <- 19:21
+chimp_protein_indices <- 16:18
+
+p_values_mRNA_s3 <- vector("numeric", nrow(s3_table))
+p_values_protein_s3 <- vector("numeric", nrow(s3_table))
+p_values_mRNA_s4 <- vector("numeric", nrow(s4_table))
+p_values_protein_s4 <- vector("numeric", nrow(s4_table))
+
+# t-tests for s3_table
+for (i in seq_len(nrow(s3_table))) {
+  p_values_mRNA_s3[i] <- t.test.hc(s3_table[i, human_mRNA_indices], s3_table[i, chimp_mRNA_indices])
+  p_values_protein_s3[i] <- t.test.hc(s3_table[i, human_protein_indices], s3_table[i, chimp_protein_indices])
+}
+
+# t-tests for s4_table
+for (i in seq_len(nrow(s4_table))) {
+  p_values_mRNA_s4[i] <- t.test.hc(s4_table[i, human_mRNA_indices], s4_table[i, chimp_mRNA_indices])
+  p_values_protein_s4[i] <- t.test.hc(s4_table[i, human_protein_indices], s4_table[i, chimp_protein_indices])
+}
+
+
+# S3 histograms
+ggplot(data.frame(p_value = p_values_mRNA_s3), aes(x = p_value)) +
+  geom_histogram(bins = 30, fill = "blue") +
+  ggtitle("Histogram of mRNA p-values for S3")
+
+ggplot(data.frame(p_value = p_values_protein_s3), aes(x = p_value)) +
+  geom_histogram(bins = 30, fill = "red") +
+  ggtitle("Histogram of Protein p-values for S3")
+
+# S3 scatterplot
+ggplot(data.frame(mRNA = p_values_mRNA_s3, Protein = p_values_protein_s3), aes(x = mRNA, y = Protein)) +
+  geom_point() +
+  ggtitle("Scatterplot of mRNA vs. Protein p-values for S3")
+
+# S4 histograms
+ggplot(data.frame(p_value = p_values_mRNA_s4), aes(x = p_value)) +
+  geom_histogram(bins = 30, fill = "blue") +
+  ggtitle("Histogram of mRNA p-values for S4")
+
+ggplot(data.frame(p_value = p_values_protein_s4), aes(x = p_value)) +
+  geom_histogram(bins = 30, fill = "red") +
+  ggtitle("Histogram of Protein p-values for S4")
+
+# S4 scatterplot
+ggplot(data.frame(mRNA = p_values_mRNA_s4, Protein = p_values_protein_s4), aes(x = mRNA, y = Protein)) +
+  geom_point() +
+  ggtitle("Scatterplot of mRNA vs. Protein p-values for S4")
+
+# Summaries of significant p values (<0.05)
+significant_mRNA_s3 <- sum(p_values_mRNA_s3 < 0.05)
+significant_protein_s3 <- sum(p_values_protein_s3 < 0.05)
+significant_mRNA_s4 <- sum(p_values_mRNA_s4 < 0.05)
+significant_protein_s4 <- sum(p_values_protein_s4 < 0.05)
+
+print(paste("Number of significant mRNA differences in S3 at p < 0.05:", significant_mRNA_s3))
+print(paste("Number of significant protein differences in S3 at p < 0.05:", significant_protein_s3))
+print(paste("Number of significant mRNA differences in S4 at p < 0.05:", significant_mRNA_s4))
+print(paste("Number of significant protein differences in S4 at p < 0.05:", significant_protein_s4))
+```
+
+The results indicate a notable level of differential expression between humans and chimps for both mRNA and protein levels, with a higher number of significant differences observed in mRNA than in protein across both samples, S3 and S4.
+
+S3 Sample: There were 45 significant mRNA differences and 26 significant protein differences. This suggests that transcriptional differences between the species are more pronounced or detectable than translational differences in this particular sample. The larger number of significant mRNA differences could indicate that many regulatory or gene expression changes at the mRNA level may not translate directly into protein level differences, possibly due to post-transcriptional regulatory mechanisms.
+
+S4 Sample: Similar to S3, there were 49 significant mRNA differences, indicating a slightly higher variability or response at the genetic transcription level compared to S3. The number of significant protein differences remains the same as in S3, at 26. This consistency in protein differences, despite a slight increase in mRNA differences, further supports the idea that not all changes at the mRNA level have a corresponding impact at the protein level.
 
 
