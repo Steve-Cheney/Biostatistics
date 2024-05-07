@@ -132,3 +132,72 @@ calculate_correlations(s4_table, "Sample S4")
 ```
 
 We can see here that I was correct in saying that both the mRNA sample comparisons had a high correlation of about 0.957 each. I was also correct in saying that the protein sample comparisons had a low correlation (and both negative) where S3 is about -0.5 and S4 is about -0.221. S4's protein means has the least amount of correlation among all sample comparisons.
+
+## Question 3
+```{r}
+# Linear model fits
+
+# s3
+lm_mRNA_s3 <- lm(chimp_mrna_mean ~ human_mrna_mean, data = s3_table)
+lm_protein_s3 <- lm(chimp_protein_mean ~ human_protein_mean, data = s3_table)
+
+# s4
+lm_mRNA_s4 <- lm(chimp_mrna_mean ~ human_mrna_mean, data = s4_table)
+lm_protein_s4 <- lm(chimp_protein_mean ~ human_protein_mean, data = s4_table)
+
+# Print summaries
+
+cat("Summary of mRNA model for S3:\n")
+print(summary(lm_mRNA_s3))
+cat("\nSummary of protein model for S3:\n")
+print(summary(lm_protein_s3))
+
+cat("----------------------------------------------\nSummary of mRNA model for S4:\n")
+print(summary(lm_mRNA_s4))
+cat("\nSummary of protein model for S4:\n")
+print(summary(lm_protein_s4))
+
+
+# Plot diagnostics
+
+par(mfrow = c(2, 2))
+
+# Diagnostic plots for S3 mRNA model
+cat("\nDiagnostics for mRNA model s3_table:\n")
+plot(lm_mRNA_s3, which = 1:4, main = "s3 mRNA")
+
+# Diagnostic plots for S3 protein model
+cat("\nDiagnostics for protein model s3_table:\n")
+plot(lm_protein_s3, which = 1:4, main = "s3 Protein")
+
+# Diagnostic plots for S4 mRNA model
+cat("\nDiagnostics for mRNA model s4_table:\n")
+plot(lm_mRNA_s4, which = 1:4, main = "s4 mRNA")
+
+# Diagnostic plots for S4 protein model
+cat("\nDiagnostics for protein model s4_table:\n")
+plot(lm_protein_s4, which = 1:4, main = "s4 Protein")
+
+par(mfrow = c(1, 1))
+
+# ANOVA to test the significance of the relationship
+cat("\nANOVA for mRNA model s3_table:\n")
+print(anova(lm_mRNA_s3))
+cat("\nANOVA for protein model s3_table:\n")
+print(anova(lm_protein_s3))
+
+cat("\nANOVA for mRNA model s4_table:\n")
+print(anova(lm_mRNA_s4))
+cat("\nANOVA for protein model s4_table:\n")
+print(anova(lm_protein_s4))
+
+```
+
+Every p-value shows us a statistically significant correlation (P <0.05), where all but the protein model for S4 is highly significant.Our Anova analysis in the mRNA models shows both S3 and S4 showing extremely strong F-statistics (1569.4 and 1729.8 respectively), with corresponding p-values indicating the predictor (human mRNA mean) is a very strong determinant of the response (chimp mRNA mean). In the protein models, the F-statistics are lower (47.394 for S3 and 8.0642 for S4), reflecting the weaker relationships in protein models compared to mRNA models. The significance levels are still strong enough to affirm the relationships despite this.The mRNA models for both samples S3 and S4 exhibit very high R-squared values (approximately 91.7%), indicating excellent fits that explain a significant proportion of the variance in chimp mRNA levels based on human mRNA levels. In contrast, the protein models show much lower R-squared values, with 25.16% for S3 and a mere 4.88% for S4, indicating moderate to poor fits and suggesting that human protein levels are less predictive of chimp protein levels.
+
+## Question 4
+
+
+
+
+
