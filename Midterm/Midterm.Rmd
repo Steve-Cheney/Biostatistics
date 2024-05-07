@@ -109,3 +109,26 @@ grid.arrange(s3_plots$mRNA, s3_plots$Protein, s4_plots$mRNA, s4_plots$Protein, n
 
 In these plots you can see that there is a relatively strong correlation between the mRNA means in each sample for Human vs. Chimp and each hold to about the same overall means on the graph. There is less of a strong correlation between proteins, comparatively, and we start to potentially see the difference in the proteome where S3 has, in general, greater values for the Chimp Protein means in S3 compared to the S4 Chimp Protein means.
 
+## Question 2
+```{r}
+# Calculate correlations with cor()
+calculate_correlations <- function(data, sample_name) {
+  # Calculating correlation between human and chimp mRNA means
+  cor_mRNA <- cor(data$human_mrna_mean, data$chimp_mrna_mean, use = "complete.obs")
+  
+  # Calculating correlation between human and chimp protein means
+  cor_protein <- cor(data$human_protein_mean, data$chimp_protein_mean, use = "complete.obs")
+  
+  cat(paste("\nCorrelation of mRNA between humans and chimps for", sample_name, ":", cor_mRNA))
+  cat(paste("\nCorrelation of protein between humans and chimps for", sample_name, ":", cor_protein))
+}
+
+# Calculate correlations for s3_table
+calculate_correlations(s3_table, "Sample S3")
+
+# Calculate correlations for s4_table
+calculate_correlations(s4_table, "Sample S4")
+
+```
+
+We can see here that I was correct in saying that both the mRNA sample comparisons had a high correlation of about 0.957 each. I was also correct in saying that the protein sample comparisons had a low correlation (and both negative) where S3 is about -0.5 and S4 is about -0.221. S4's protein means has the least amount of correlation among all sample comparisons.
