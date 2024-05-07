@@ -1,0 +1,254 @@
+---
+title: "Assignment 3 - Steve Cheney"
+output: html_document
+date: "2024-04-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1
+```{r}
+# Set seed
+set.seed(500)
+
+# Sim x
+x <- 1:20
+
+# Sim y
+y <- 20 + 10 * x + 5 * x^2 + rnorm(20, mean = 0, sd = 200)
+
+data <- data.frame(x, y)
+head(data)
+
+model_1 <- lm(y ~ 1, data = data)
+
+model_2 <- lm(y ~ x, data = data)
+
+model_3 <- lm(y ~ x + I(x^2), data = data)
+
+# Summaries
+summary(model_1) # intercept
+summary(model_2) # intercept + linear term
+summary(model_3) # intercept + linear + quadratic term
+
+# Predictions
+p_1 <- predict(model_1, data)
+p_2 <- predict(model_2, data)
+p_3 <- predict(model_3, data)
+
+# Create df for comparison
+p_results <- data.frame(
+  x = data$x,
+  Observed = data$y,
+  f_1 = p_1,
+  f_2 = p_2,
+  f_3 = p_3
+)
+
+print(p_results)
+
+# Residuals
+r_1 <- resid(model_1)
+r_2 <- resid(model_2)
+r_3 <- resid(model_3)
+
+# Create df for comparison
+r_results <- data.frame(
+  x = data$x,
+  Observed = data$y,
+  R_1 = r_1,
+  R_2 = r_2,
+  R_3 = r_3
+)
+
+print(r_results)
+
+# Set up the graphical layout
+par(mfrow=c(2,3)) # Sets up a plotting area into a 2x3 grid
+
+# Plotting Observed vs Fitted values for each model
+plot(data$x, p_results$Observed, main="Model 1: Observed vs. Fitted", xlab="X", ylab="Observed and Fitted")
+points(data$x, p_results$f_1, col="red", pch=19)
+legend("topright", legend=c("Observed", "Fitted"), col=c("black", "red"), pch=19)
+
+plot(data$x, p_results$Observed, main="Model 2: Observed vs. Fitted", xlab="X", ylab="Observed and Fitted")
+points(data$x, p_results$f_2, col="blue", pch=19)
+legend("topright", legend=c("Observed", "Fitted"), col=c("black", "blue"), pch=19)
+
+plot(data$x, p_results$Observed, main="Model 3: Observed vs. Fitted", xlab="X", ylab="Observed and Fitted")
+points(data$x, p_results$f_3, col="green", pch=19)
+legend("topright", legend=c("Observed", "Fitted"), col=c("black", "green"), pch=19)
+
+# Plotting Observed vs Residuals for each model
+plot(data$x, r_results$R_1, main="Model 1: Observed vs. Residuals", xlab="X", ylab="Residuals", type="p", col="red")
+abline(h=0, lty=2) # Adds a horizontal line at zero for reference
+
+plot(data$x, r_results$R_2, main="Model 2: Observed vs. Residuals", xlab="X", ylab="Residuals", type="p", col="blue")
+abline(h=0, lty=2) # Adds a horizontal line at zero for reference
+
+plot(data$x, r_results$R_3, main="Model 3: Observed vs. Residuals", xlab="X", ylab="Residuals", type="p", col="green")
+abline(h=0, lty=2) # Adds a horizontal line at zero for reference
+
+par(mfrow=c(1,1))
+
+```
+
+## Question 2
+```{r}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("ALL")
+library(ALL)
+data("ALL")
+library(Biobase)
+# Convert ALL to df
+p_data <- pData(ALL)
+g_data <- exprs(ALL)
+
+p_data <- p_data[!is.na(p_data$age), ]
+g_data <- g_data[, rownames(p_data), drop=FALSE]
+
+age_gene <- data.frame(age = p_data$age, t(g_data))
+
+
+anova_results <- list()
+
+# Loop through each gene
+# Start at 2 to skip the age column
+for (i in 2:ncol(age_gene)) { 
+    gene_expression <- age_gene[, i]
+
+    # Fit linear model
+    model <- lm(age ~ gene_expression, data = age_gene)
+
+    # ANOVA
+    anova_model <- anova(model)
+
+    # Find p-value
+    p_value <- anova_model["gene_expression", "Pr(>F)"]
+
+    # Store p-value with the gene name as key
+    anova_results[colnames(age_gene)[i]] <- p_value
+}
+
+p_values <- unlist(anova_results)
+
+p_values <- p_values[!is.na(p_values)]
+
+# Plot a histogram of the p-values
+hist(p_values, breaks=50, main="Histogram of P-Values", xlab="P-Value", col="blue")
+
+
+min_pval <- min(p_values)
+max_pval <- max(p_values)
+
+most_significant_gene <- names(p_values)[p_values == min_pval]
+least_significant_gene <- names(p_values)[p_values == max_pval]
+
+analyze <- function(gene_name) {
+  gene_expression <- age_gene[, gene_name]
+  
+  # Fit linear model
+  model <- lm(age ~ gene_expression, data = age_gene)
+  
+  # Output model summary
+  model_summary <- summary(model)
+  
+  # Perform ANOVA
+  anova_result <- anova(model)
+  
+  # Diagnostic plots
+  par(mfrow=c(2, 2))
+  plot(model)
+  
+  return(list(model_summary=model_summary, anova_result=anova_result))
+}
+
+most_significant_analysis <- analyze(most_significant_gene)
+least_significant_analysis <- analyze(least_significant_gene)
+
+# Print summaries and ANOVA results
+print("Most Significant Gene Analysis:")
+print(most_significant_analysis$model_summary)
+print(most_significant_analysis$anova_result)
+
+print("Least Significant Gene Analysis:")
+print(least_significant_analysis$model_summary)
+print(least_significant_analysis$anova_result)
+
+```
+
+## Question 3
+```{r}
+n <- 10000
+
+pvals <- numeric(n)
+
+# Run the simulations
+for (i in 1:n) {
+  sample1 <- rnorm(10) # Draw sample 1 of 10
+  sample2 <- rnorm(10) # Draw sample 2 of 10
+  
+  t_test <- t.test(sample1, sample2)
+  
+  # Save the p-value
+  pvals[i] <- t_test$p.value
+}
+
+# Plot
+hist(pvals, breaks=50, main="Distribution of P-Values", xlab="P-Value", col="blue")
+
+significant_count <- sum(pvals < 0.05)
+
+print("Number of pvals below threshold 0.05:")
+print(significant_count)
+
+```
+
+## Question 4
+```{r}
+library(ALL)
+data("ALL")
+library(Biobase)
+# Convert ALL to df
+p_data <- pData(ALL)
+g_data <- exprs(ALL)
+
+p_data <- p_data[!is.na(p_data$age), ]
+g_data <- g_data[, rownames(p_data), drop=FALSE]
+
+date.cr.chr <- as.character(p_data$date.cr)
+diag.chr <- as.character(p_data$diagnosis)
+date.cr.t <- strptime(date.cr.chr, "%m/%d/%Y")
+diag.t <- strptime(diag.chr, "%m/%d/%Y")
+time.to.remission <- as.numeric(date.cr.t - diag.t)
+
+rem_w_gene <- data.frame(rem = time.to.remission, t(g_data))
+
+anova_pvals <- numeric(ncol(rem_w_gene) - 1)
+shapiro_pvals <- numeric(ncol(rem_w_gene) - 1)
+
+for (i in 2:ncol(rem_w_gene)) {
+    gene_name <- colnames(rem_w_gene)[i]
+    
+    # Fit linear
+    model <- lm(rem ~ rem_w_gene[, i], data = rem_w_gene)
+    
+    # ANOVA
+    anova_result <- anova(model)
+    anova_pvals[i - 1] <- anova_result["rem_w_gene[, i]", "Pr(>F)"]
+    
+    # Shapiro-Wilk
+    shapiro_test <- shapiro.test(residuals(model))
+    shapiro_pvals[i - 1] <- shapiro_test$p.value
+}
+
+# Plot ANOVA p-values
+hist(anova_pvals, breaks=50, main="ANOVA Dist", xlab="P-Value", col="blue")
+
+# Plot Shapiro-Wilk p-values
+hist(shapiro_pvals, breaks=50, main="Shapiro-Wilk Dist", xlab="P-Value", col="red")
+```

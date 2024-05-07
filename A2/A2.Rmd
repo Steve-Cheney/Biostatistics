@@ -1,0 +1,372 @@
+---
+title: "Assignment 2 - Steve Cheney"
+output: html_document
+date: "2024-04-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1
+```{r}
+#### Set up looping numbers ####
+################################
+max.sample.size <- 20 
+n.sim <- 1000 # number of re-samplings we are going to run for each sample size
+
+#### Set up matrices to save data. I have set up the first matrix for you ####
+##############################################################################
+sd.ori <- matrix(0, nrow = n.sim, ncol = max.sample.size)
+# You will need to make two additional matrices:
+# similar matrix for 1/sqrt(n) in an object called sd.n 
+sd.n <- matrix(0, nrow = n.sim, ncol = max.sample.size)
+# similar matrix for 1/sqrt(n-2) in an object called sd.n.2
+sd.n.2 <- matrix(0, nrow = n.sim, ncol = max.sample.size)
+
+
+#### perform computations in a loop ####
+########################################
+for (sample.size in 2:max.sample.size) { 
+   for (i.sim in 1:n.sim) { # resample n.sim times. In each iteration:
+      # Random sample of sample.size
+      sample <- rnorm(n = sample.size, mean = 0, sd =1)
+      # 'Classical' sd
+      sd.ori.x <- sd(sample)
+      # Store into sd.ori matrix
+      sd.ori[i.sim, sample.size] <- sd.ori.x
+   
+      # next, calculate the first modified sd estimator for the same sample and save it where it belongs in sd.n
+      sd.n.x <- sd.ori.x * sqrt(sample.size - 1) / sqrt(sample.size)
+      sd.n[i.sim, sample.size] <- sd.n.x
+      
+      # next, calculate the second modified sd estimator for the same sample and save it where it belongs in sd.n.2
+      if (sample.size > 2) { # avoid div/0
+        sd.n.2.x <- sd.ori.x * sqrt(sample.size - 1) / sqrt(sample.size - 2)
+        sd.n.2[i.sim, sample.size] <- sd.n.2.x
+      }
+   }
+}
+
+print(head(sd.ori))
+print(head(sd.n))
+print(head(sd.n.2))
+#### Once all ad's are calculated, look at the sample statistics for their distributions. ####
+##############################################################################################
+# for each sample size (i.e. for each column of sd.ori) calculate the mean of 
+# "classical" sd’s across all resampled samples of that size as well as their standard deviations
+mean.sd.ori <- apply(sd.ori, 2, mean)
+sd.sd.ori <- apply(sd.ori, 2, sd)
+# Print data
+print(data.frame(mean.sd.ori, sd.sd.ori))
+
+# Then do the same for estimators with sqrt(n) and sqrt(n-2) in denominators.
+mean.sd.n <- apply(sd.n, 2, mean)
+sd.sd.n <- apply(sd.n, 2, sd)
+mean.sd.n.2 <- apply(sd.n.2, 2, mean)
+sd.sd.n.2 <- apply(sd.n.2, 2, sd)
+# Print data
+print(data.frame(mean.sd.n, sd.sd.n))
+print(data.frame(mean.sd.n.2, sd.sd.n.2))
+
+full.df <- data.frame(mean.sd.ori,sd.sd.ori,mean.sd.n,sd.sd.n,mean.sd.n.2,sd.sd.n.2)
+```
+
+```{r}
+# Load ggplot2
+if (!require('ggplot2')) install.packages('ggplot2', dependencies = TRUE)
+library(ggplot2)
+
+full.df$sample.size <- 1:max.sample.size
+
+# ggplot for ori
+plot.ori <- ggplot(full.df, aes(x = sample.size)) +
+  geom_point(aes(y = mean.sd.ori, color = "blue"), size = 2) +
+  geom_errorbar(aes(ymin = mean.sd.ori - sd.sd.ori, ymax = mean.sd.ori + sd.sd.ori), 
+                width = 0.2, color = "blue") +
+  labs(title = "Ori",
+       x = "Sample Size", 
+       y = "Mean Standard Deviation") +
+  scale_color_manual("Legend", values = c("blue" = "blue"), labels = c("Ori SD"))
+
+
+# ggplot for n
+plot.n <- ggplot(full.df, aes(x = sample.size)) +
+  geom_point(aes(y = mean.sd.n, color = "red"), size = 2) +
+  geom_errorbar(aes(ymin = mean.sd.n - sd.sd.n, ymax = mean.sd.n + sd.sd.n), 
+                width = 0.2, color = "red") +
+  labs(title = "n",
+       x = "Sample Size", 
+       y = "Mean Standard Deviation") +
+  scale_color_manual("Legend", values = c("red" = "red"), labels = c("n SD"))
+
+
+# ggplot for n.2
+plot.n.2 <- ggplot(full.df, aes(x = sample.size)) +
+  geom_point(aes(y = mean.sd.n.2, color = "green"), size = 2) +
+  geom_errorbar(aes(ymin = mean.sd.n.2 - sd.sd.n.2, ymax = mean.sd.n.2 + sd.sd.n.2), 
+                width = 0.2, color = "green") +
+  labs(title = "n.2",
+       x = "Sample Size", 
+       y = "Mean Standard Deviation") +
+  scale_color_manual("Legend", values = c("green" = "green"), labels = c("n.2 SD"))
+
+plot.ori
+plot.n
+plot.n.2
+
+# Combined plot
+combined_plot <- ggplot(full.df, aes(x = sample.size)) +
+  # Adding points and error bars for 'Ori' SD
+  geom_point(aes(y = mean.sd.ori, color = "Ori SD"), size = 2) +
+  geom_errorbar(aes(ymin = mean.sd.ori - sd.sd.ori, ymax = mean.sd.ori + sd.sd.ori),
+                width = 0.2, color = "blue") +
+  
+  # Adding points and error bars for 'n' SD
+  geom_point(aes(y = mean.sd.n, color = "n SD"), size = 2) +
+  geom_errorbar(aes(ymin = mean.sd.n - sd.sd.n, ymax = mean.sd.n + sd.sd.n),
+                width = 0.2, color = "red") +
+  
+  # Adding points and error bars for 'n.2' SD
+  geom_point(aes(y = mean.sd.n.2, color = "n.2 SD"), size = 2) +
+  geom_errorbar(aes(ymin = mean.sd.n.2 - sd.sd.n.2, ymax = mean.sd.n.2 + sd.sd.n.2),
+                width = 0.2, color = "green") +
+  
+  # Setting up legend and labels
+  scale_color_manual("Legend",
+                     values = c("Ori SD" = "blue", "n SD" = "red", "n.2 SD" = "green"),
+                     labels = c("Ori SD" = "Original SD", "n SD" = "Modified n SD", "n.2 SD" = "Modified n.2 SD")) +
+  labs(title = "Comparison of Standard Deviation Calculations",
+       x = "Sample Size",
+       y = "Mean Standard Deviation")
+
+combined_plot
+```
+
+We can see here how all of our plots converge to 1, which is the standard deviation of the original sample. Our points are essentially adding in random data through their sampling, so it adjusts the MSD across each sample size. However, as our sample size gets larger, and the randomness essentially becomes more normalized due to less variation in randomness with a larger n, we get our convergence. 
+
+## Question 2
+
+```{r}
+#### Step 1: create a matrix containing the resamplings (10,000 rows for the simulations and 12 columns for the resamplings).
+
+mean <- 2
+variance <- 3
+sd <- sqrt(variance)
+
+n1 <- 5 # Sample size 1
+n2 <- 7 # Sample size 2
+
+# Generate samples
+
+num.simulations <- 10000
+
+# Initialize a matrix to store resampling results
+resample.matrix <- matrix(NA, nrow = num.simulations, ncol = n1 + n2)
+
+# Set seed for reproducibility
+set.seed(505)
+
+# Populate the resample matrix
+for (i in 1:num.simulations) {
+    sample1 <- rnorm(n1, mean, sd)
+    sample2 <- rnorm(n2, mean, sd)
+    resample.matrix[i, ] <- c(sample1, sample2)
+}
+
+#### Step 2: define a function that will calculate the difference between the means of sample 1 and sample 2 in our representation of the data 
+mean.diff <- function(x) {
+  mean.sample1 <- mean(x[1:n1])  # Calc mean to n1
+  mean.sample2 <- mean(x[(n1 + 1):(n1 + n2)])  # Calc mean to next n2
+  mean.diff <- mean.sample1 - mean.sample2
+  return(mean.diff)
+}
+
+#### Step 3: calculate the difference in the means. for all rows of your matrix. Save it in an object called sim.diff.
+
+# Do ttests of the pvals
+t_test_p_value <- function(row) {
+  t.sample1 <- row[1:n1]
+  t.sample2 <- row[(n1 + 1):(n1 + n2)]
+  test <- t.test(t.sample1, t.sample2)  # Perform t-test
+  return(test$p.value)  # Return the p-value of the t-test
+}
+# Apply the function to each row of the resample.matrix
+t_test_p_values <- apply(resample.matrix, 1, t_test_p_value)
+#t_test_p_values
+
+sim.diff <- apply(resample.matrix, 1, mean.diff)
+#sim.diff
+
+#### Step 4: calculate the brute force p-value by taking the rank of the negative absolute value of sim.diff divided by the length of sim.diff. Save this in a vector called sim.p.rk
+
+# abs(diffs)
+abs_diff <- abs(sim.diff)
+
+# Ranks of - abs
+ranks <- rank(-abs_diff)
+
+# Get p-values
+sim.p.rk <- ranks / num.simulations
+
+```
+```{r}
+ggplot(data = data.frame(Difference = sim.diff), aes(x = Difference)) +
+  geom_histogram(binwidth = 0.1, fill = "blue", color = "black") +
+  ggtitle("Distribution of Differences in Means") +
+  xlab("Difference in Means") + ylab("Frequency")
+
+ggplot(data = data.frame(TTestPValues = t_test_p_values), aes(x = TTestPValues)) +
+  geom_histogram(binwidth = 0.01, fill = "red", color = "black") +
+  ggtitle("Distribution of T-Test P-Values") +
+  xlab("T-Test P-Value") + ylab("Frequency")
+
+ggplot(data = data.frame(BruteForcePValues = sim.p.rk), aes(x = BruteForcePValues)) +
+  geom_histogram(binwidth = 0.01, fill = "green", color = "black") +
+  ggtitle("Distribution of Brute Force P-Values") +
+  xlab("Brute Force P-Value") + ylab("Frequency")
+
+ggplot(data = data.frame(Difference = sim.diff, TTestPValues = t_test_p_values), aes(x = Difference, y = TTestPValues)) +
+  geom_point(alpha = 0.5, color = "purple") +
+  ggtitle("T-Test P-Values vs. Differences in Means") +
+  xlab("Difference in Means") + ylab("T-Test P-Value")
+
+ggplot(data = data.frame(Difference = sim.diff, BruteForcePValues = sim.p.rk), aes(x = Difference, y = BruteForcePValues)) +
+  geom_point(alpha = 0.5, color = "orange") +
+  ggtitle("Brute Force P-Values vs. Differences in Means") +
+  xlab("Difference in Means") + ylab("Brute Force P-Value")
+
+ggplot(data = data.frame(TTestPValues = t_test_p_values, BruteForcePValues = sim.p.rk), aes(x = TTestPValues, y = BruteForcePValues)) +
+  geom_point(alpha = 0.5, color = "darkgreen") +
+  ggtitle("T-Test P-Values vs. Brute Force P-Values") +
+  xlab("T-Test P-Value") + ylab("Brute Force P-Value")
+```
+
+Our results here show a clear trend with some statistical variance regarding our p-values. Brute forcing our values will tend to get a more uniform approach.Brute-force p-values typically exhibit less variance than those obtained from t-tests because they are based on the empirical distribution of the data, which makes them resistant to violations of the t-test's assumptions about normality and equal variances. By utilizing ranking methods, brute-force approaches mitigate the influence of outliers and non-normal distributions, offering a more stable estimation of the significance level across different simulations. This is especially clear in this first set of samples because of the relatively small sample size. We'll see the difference when these increase in just a moment:
+
+### Repeating with new sample sizes
+```{r}
+mean <- 2
+variance <- 3
+sd <- sqrt(variance)
+n1 <- 20
+n2 <- 28
+num.simulations <- 10000
+resample.matrix <- matrix(NA, nrow = num.simulations, ncol = n1 + n2)
+set.seed(505)
+for (i in 1:num.simulations) {
+    sample1 <- rnorm(n1, mean, sd)
+    sample2 <- rnorm(n2, mean, sd)
+    resample.matrix[i, ] <- c(sample1, sample2)
+}
+mean.diff <- function(x) {
+  mean.sample1 <- mean(x[1:n1])
+  mean.sample2 <- mean(x[(n1 + 1):(n1 + n2)])
+  mean.diff <- mean.sample1 - mean.sample2
+  return(mean.diff)
+}
+t_test_p_value <- function(row) {
+  t.sample1 <- row[1:n1]
+  t.sample2 <- row[(n1 + 1):(n1 + n2)]
+  test <- t.test(t.sample1, t.sample2)
+  return(test$p.value)
+}
+t_test_p_values <- apply(resample.matrix, 1, t_test_p_value)
+sim.diff <- apply(resample.matrix, 1, mean.diff)
+abs_diff <- abs(sim.diff)
+ranks <- rank(-abs_diff)
+sim.p.rk <- ranks / num.simulations
+
+ggplot(data = data.frame(Difference = sim.diff), aes(x = Difference)) +
+  geom_histogram(binwidth = 0.1, fill = "blue", color = "black") +
+  ggtitle("Distribution of Differences in Means") +
+  xlab("Difference in Means") + ylab("Frequency")
+
+ggplot(data = data.frame(TTestPValues = t_test_p_values), aes(x = TTestPValues)) +
+  geom_histogram(binwidth = 0.01, fill = "red", color = "black") +
+  ggtitle("Distribution of T-Test P-Values") +
+  xlab("T-Test P-Value") + ylab("Frequency")
+
+ggplot(data = data.frame(BruteForcePValues = sim.p.rk), aes(x = BruteForcePValues)) +
+  geom_histogram(binwidth = 0.01, fill = "green", color = "black") +
+  ggtitle("Distribution of Brute Force P-Values") +
+  xlab("Brute Force P-Value") + ylab("Frequency")
+
+ggplot(data = data.frame(Difference = sim.diff, TTestPValues = t_test_p_values), aes(x = Difference, y = TTestPValues)) +
+  geom_point(alpha = 0.5, color = "purple") +
+  ggtitle("T-Test P-Values vs. Differences in Means") +
+  xlab("Difference in Means") + ylab("T-Test P-Value")
+
+ggplot(data = data.frame(Difference = sim.diff, BruteForcePValues = sim.p.rk), aes(x = Difference, y = BruteForcePValues)) +
+  geom_point(alpha = 0.5, color = "orange") +
+  ggtitle("Brute Force P-Values vs. Differences in Means") +
+  xlab("Difference in Means") + ylab("Brute Force P-Value")
+
+ggplot(data = data.frame(TTestPValues = t_test_p_values, BruteForcePValues = sim.p.rk), aes(x = TTestPValues, y = BruteForcePValues)) +
+  geom_point(alpha = 0.5, color = "darkgreen") +
+  ggtitle("T-Test P-Values vs. Brute Force P-Values") +
+  xlab("T-Test P-Value") + ylab("Brute Force P-Value")
+```
+
+As sample size increases, the variance of the estimate decreases due to the Central Limit Theorem, which states that the distribution of the sample mean will approximate a normal distribution as the sample size grows, regardless of the original data's distribution. This reduction in variance leads to more precise estimates, narrowing the confidence intervals and making simulated results more closely align with theoretically calculated probabilities. This is very evident in our second set of plots, specifically with the ranked p value and t test p value plot at the end, where there is a tighter plot of data points.
+
+## Question 3
+
+### a
+
+```{r}
+set.seed(123)
+n1 <- 423
+mean1 <- 67
+sd1 <- 11
+sample1 <- rnorm(n1, mean = mean1, sd = sd1)
+
+n2 <- 423
+sample2 <- c(rnorm(n2/2, mean = 10, sd = 1), rnorm(n2/2, mean = -10, sd = 1))
+
+
+ttest.res <- t.test(sample1, sample2)
+print(ttest.res$p.value) # pval
+par(mar = c(5, 4, 4, 8) + 0.1)
+hist(sample1, breaks = 30, col = rgb(0, 0, 1, 0.5), main = "Comparison of Two Distributions", xlab = "Values", xlim = c(-20, 90))
+hist(sample2, breaks = 30, col = rgb(1, 0, 0, 0.5), add = TRUE)
+legend("topright", inset=c(-0.3,0), legend = c("Sample 1 (Normal)", "Sample 2 (Bimodal)"), 
+       fill = c(rgb(0, 0, 1, 0.5), rgb(1, 0, 0, 0.5)), xpd=TRUE, horiz=FALSE)
+```
+
+### b
+
+```{r}
+set.seed(123)
+n1 <- 423
+mean1 <- 67
+sd1 <- 11
+sample1 <- rnorm(n1, mean = mean1, sd = sd1)
+
+# Parameters for Sample 2, defining these outside the loop to use inside it
+n2 <- 423
+mean2_pos <- 10  # Define positive mean for half of sample2
+mean2_neg <- -10  # Define negative mean for the other half of sample2
+sd2 <- 1  # Standard deviation for sample2
+
+# Number of trials
+num_trials <- 10
+
+# Vector to store p-values
+p_values <- numeric(num_trials)
+
+for (i in 1:num_trials) {
+  # Pick samples
+  sample1 <- rnorm(n1, mean = mean1, sd = sd1)
+  sample2 <- c(rnorm(n2/2, mean = mean2_pos, sd = sd2), rnorm(n2/2, mean = mean2_neg, sd = sd2))
+    
+  # t-test and store p-value
+  ttest_res <- t.test(sample1, sample2)
+  p_values[i] <- ttest_res$p.value
+}
+
+# Plot
+hist(p_values, breaks = 50, col = "skyblue", main = "Distribution of P-Values from T-Tests", xlab = "P-Value")
+```
+
+A uniform distribution of p-values is expected under the null hypothesis when the null hypothesis is true and the data meet the assumptions of the test. In this ideal scenario, where assumptions are met and the null hypothesis (that the means of the two populations are equal) is true, p-values should be uniformly distributed between 0 and 1. This means that there is no bias in the test towards either rejecting or failing to reject the null hypothesis unjustly. In this specific case, we do see -1 to 0. I am not entirely sure what is going on in this case however.

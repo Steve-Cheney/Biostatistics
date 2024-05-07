@@ -1,0 +1,248 @@
+---
+title: "Assignment 4 - Steve Cheney"
+output: html_document
+date: "2024-04-30"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1
+```{r}
+set.seed(10)
+smpl.sizes <- c(1, 2, 4, 8, 16, 32, 64, 128) # sample sizes
+r.mu <- numeric()
+r.sem <- numeric()
+n.sim <- 1000
+lambda <- 1 # lambda for exp distribution
+
+# set for calc of CI
+r.lower <- numeric()
+r.upper <- numeric()
+
+for (i.smpl in smpl.sizes) {
+  r.mat <- matrix(rexp(i.smpl * n.sim, rate = lambda), nrow = n.sim, ncol = i.smpl)
+
+  mu.tmp <- apply(r.mat, 1, mean)
+  
+  r.mu <- c(r.mu, mean(mu.tmp))
+  r.sem <- c(r.sem, sd(mu.tmp) / sqrt(i.smpl))
+}
+
+# Plot
+plot(c(min(smpl.sizes), max(smpl.sizes)),
+     c(min(c(r.mu, r.sem)), max(c(r.mu, r.sem))),
+     type = "n", ylab = "Mean and SEM",
+     xlab = "n", sub = paste(n.sim, "sims"))
+points(smpl.sizes, r.mu, type = "l", lty = 2, col = "red", lwd = 2)
+points(smpl.sizes, r.sem, type = "l", col = "blue", lwd = 2)
+
+points(smpl.sizes, 1 / sqrt(lambda * smpl.sizes), type = "l", col = "green", lwd = 2)
+
+# part b
+
+# select samples
+samples <- rexp(100)
+conf.samples <- confint(lm(samples ~1))
+
+# calc tails
+lower <- mean(samples) + qt(p = 0.025, df = 99) * sd(samples)/sqrt(100)
+upper <- mean(samples) - qt(p = 0.025, df = 99) * sd(samples)/sqrt(100)
+
+# check methods
+lowercheck <- signif(conf.samples[[1]], digits = 3) == signif(lower, digits = 3)
+uppercheck <- signif(conf.samples[[2]], digits = 3) == signif(upper, digits = 3)
+print(lowercheck)
+print(uppercheck)
+
+# part c
+
+for (i.smpl in smpl.sizes) {
+  r.mat <- matrix(rexp(i.smpl*n.sim), ncol=i.smpl, nrow= n.sim)
+  r.mat <- apply(r.mat, 1, sum)
+  hist(r.mat, main = i.smpl, xlab = "Sums", ylab = "Freq")
+}
+```
+
+## Question 2
+```{r}
+set.seed(10)
+smpl.sizes <- c(1, 2, 4, 8, 16, 32, 64, 128) # sample sizes
+r.mu <- numeric()
+r.sem <- numeric()
+n.sim <- 1000
+
+# set for calc of CI
+r.lower <- numeric()
+r.upper <- numeric()
+
+for (i.smpl in smpl.sizes) {
+  # drawing uniform distribution
+  r.mat <- matrix(runif(i.smpl * n.sim, min = 0, max = 1), nrow = n.sim, ncol = i.smpl)
+
+  mu.tmp <- apply(r.mat, 1, mean)
+  
+  r.mu <- c(r.mu, mean(mu.tmp))
+  r.sem <- c(r.sem, sd(mu.tmp) / sqrt(i.smpl))
+}
+
+# Plot
+plot(c(min(smpl.sizes), max(smpl.sizes)),
+     c(min(c(r.mu, r.sem)), max(c(r.mu, r.sem))),
+     type = "n", ylab = "Mean and SEM",
+     xlab = "n", sub = paste(n.sim, "sims"))
+points(smpl.sizes, r.mu, type = "l", lty = 2, col = "red", lwd = 2)
+points(smpl.sizes, r.sem, type = "l", col = "blue", lwd = 2)
+
+
+# part b (Updated for uniform distribution)
+samples <- runif(100)
+conf.samples <- confint(lm(samples ~ 1))
+
+# calc tails
+lower <- mean(samples) + qt(p = 0.025, df = 99) * sd(samples) / sqrt(100)
+upper <- mean(samples) - qt(p = 0.025, df = 99) * sd(samples) / sqrt(100)
+
+# check methods
+lowercheck <- signif(conf.samples[[1]], digits = 3) == signif(lower, digits = 3)
+uppercheck <- signif(conf.samples[[2]], digits = 3) == signif(upper, digits = 3)
+print(lowercheck)
+print(uppercheck)
+
+# part c (Updated for uniform distribution)
+
+for (i.smpl in smpl.sizes) {
+  r.mat <- matrix(runif(i.smpl * n.sim), ncol = i.smpl, nrow = n.sim)
+  r.mat <- apply(r.mat, 1, sum)
+  hist(r.mat, main = i.smpl, xlab = "Sums", ylab = "Freq", breaks = 30)
+}
+```
+
+## Question 3
+```{r}
+# sample sizes we are going to consider:
+set.seed(10)
+
+n.smpl <- c(2,4,8,16,32,64,128,256,512,1024)
+n.sim <- 1000 # number of resamplings for each sample size
+all.p.norm <- numeric()
+all.p.exp <- numeric()
+all.p.unif <- numeric()
+
+for (i.smpl in n.smpl) {
+  # generate n.sim random samples of size i.smpl from exponential, normal, and uniform distributions:
+  r.mat.exp <- matrix(rexp(i.smpl * n.sim, rate = 1), nrow = n.sim, ncol = i.smpl)
+  r.mat.norm <- matrix(rnorm(i.smpl * n.sim, mean = 0, sd = 1), nrow = n.sim, ncol = i.smpl)
+  r.mat.unif <- matrix(runif(i.smpl * n.sim, min = -sqrt(3), max = sqrt(3)), nrow = n.sim, ncol = i.smpl)
+
+  # Create objects containing zero to store the counts of exponential, normal, and uniform-drawn 
+  # samples that result in confidence intervals of the mean NOT containing the true mean
+  p.exp <- 0; p.norm <- 0; p.unif <- 0
+  for (i.sim in 1:n.sim) {
+    # calculate confidence intervals of the mean for each of the i.sim-th
+    # samples drawn from normal, exponential, uniform distributions:
+    exp.ci <- confint(lm(r.mat.exp[i.sim,] ~ 1))
+    norm.ci <- confint(lm(r.mat.norm[i.sim,] ~ 1))
+    unif.ci <- confint(lm(r.mat.unif[i.sim,] ~ 1))
+    
+    # Check if the confidence interval of the mean does NOT contain the true underlying mean
+    if (!(0 >= exp.ci[1] && 0 <= exp.ci[2])) { p.exp <- p.exp + 1 }
+    if (!(0 >= norm.ci[1] && 0 <= norm.ci[2])) { p.norm <- p.norm + 1 }
+    if (!(0 >= unif.ci[1] && 0 <= unif.ci[2])) { p.unif <- p.unif + 1 }
+  }
+  # Append the probabilities for the confidence interval at the current sample size that do 
+  # NOT contain the mean to the storage vectors.
+  all.p.exp <- c(all.p.exp, p.exp / n.sim)
+  all.p.norm <- c(all.p.norm, p.norm / n.sim)
+  all.p.unif <- c(all.p.unif, p.unif / n.sim)
+}
+```
+```{r}
+# Plot partial to check
+
+# Extracting the first 4 sample sizes and associated probabilities
+set.seed(10)
+first_four_sizes <- n.smpl[1:4]
+first_four_p_norm <- all.p.norm[1:4]
+first_four_p_exp <- all.p.exp[1:4]
+first_four_p_unif <- all.p.unif[1:4]
+
+# Plotting the first 4 sample sizes
+plot(first_four_sizes, first_four_p_norm, type = "o", col = "red", xlab = "Sample Size", ylab = "Freq of CI NOT containing the mean",
+     main = "CI by Distribution (First 4 Samples)", ylim = c(0, max(c(first_four_p_norm, first_four_p_exp, first_four_p_unif))),
+     pch = 19, lwd = 2)
+lines(first_four_sizes, first_four_p_exp, type = "o", col = "green", pch = 19, lwd = 2)
+lines(first_four_sizes, first_four_p_unif, type = "o", col = "blue", pch = 19, lwd = 2)
+
+legend("topright", legend = c("Normal", "Exponential", "Uniform"), col = c("red", "green", "blue"), lty = 1, pch = 19, lwd = 2)
+
+
+# Plot Full CI distribution
+plot(n.smpl, all.p.norm, type = "o", col = "red", xlab = "Sample Size", ylab = "Freq of CI NOT containing the mean",
+     main = "CI by Distribution", ylim = c(0, max(c(all.p.norm, all.p.exp, all.p.unif))),
+     pch = 19, lwd = 2)
+lines(n.smpl, all.p.exp, type = "o", col = "green", pch = 19, lwd = 2)
+lines(n.smpl, all.p.unif, type = "o", col = "blue", pch = 19, lwd = 2)
+
+legend("topright", legend = c("Normal", "Exponential", "Uniform"), col = c("red", "green", "blue"), lty = 1, pch = 19, lwd = 2)
+
+```
+
+In examining how the percentage of misses in confidence intervals relates to sample size and distribution shape, I've found that larger sample sizes generally reduce the likelihood of misses due to more precise estimations of the population mean and smaller standard errors. However, for skewed distributions such as the exponential, my graph results show an increasing trend in misses as sample sizes grow. This makes sense because the skewness of the distribution can cause the sample mean to be an inconsistent estimator of the population mean, thereby increasing the chance of misses. In contrast, symmetric distributions like the normal tend to demonstrate more stable confidence interval coverage with increasing sample size, reflecting their alignment with common statistical assumptions and methods. This goes to show that both the nature of the distribution and the size of the sample influence the accuracy and reliability of confidence intervals in statistical analysis.
+
+## Question 4
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+if (!requireNamespace("dplyr", quietly = TRUE))
+    install.packages("dplyr")
+BiocManager::install("ALL")
+```
+```{r}
+library("dplyr")
+library("ALL")
+data("ALL")
+
+# Pulling and Merging data
+p_data <- pData(ALL)
+g_data <- exprs(ALL)
+age_gene <- cbind(age = p_data$age, t(g_data))
+
+# ANOVA
+m_gene <- matrix(0, nrow = (ncol(age_gene)), ncol = 1)
+for (i in 2:ncol(age_gene)){
+  m_gene[i,1] <- anova(
+    lm(formula = age_gene[,i] ~ age_gene[age_gene[,1]]))$"Pr(>F)"[1]
+}
+# Cleaning data
+m_gene <- as.data.frame(m_gene[-1,])
+colnames(m_gene) <- "anova.p.vals"
+
+gene_stats <- as.data.frame(cbind(anova.p.vals = m_gene$anova.p.vals, g_data))
+
+most_sig <- rownames(slice_min(gene_stats, order_by = gene_stats$anova.p.vals))
+non_sig <- rownames(slice_sample(gene_stats))
+
+print(paste("Most significant gene: ", most_sig,"with a PVAL:", pull(gene_stats[most_sig,][1])))
+
+print(paste("Insignificant gene:", non_sig, "with a PVAL:", pull(gene_stats[non_sig,][1])))
+
+exprs_most_sig <- g_data[most_sig,]
+exprs_in_sig <- g_data[non_sig,]
+
+df_most_sig <- data.frame(gene = exprs_most_sig, age = p_data$age)
+df_in_sig <- data.frame(gene = exprs_in_sig, age = p_data$age)
+
+m_most_sig <- lm(gene ~ age, df_most_sig)
+m_most_sig
+
+m_non_sig <- lm(gene ~ age, df_in_sig)
+m_non_sig
+
+confint(m_most_sig)
+confint(m_non_sig)
+
+```
+
+In our results here, they indicate that out of the genes analyzed, the gene labeled "1921_at" was identified as the most significant in relation to age, with a very low p-value of approximately 0.000119. This suggests a strong statistical evidence that age has an effect on the expression of this gene. On the other hand, the gene labeled "37519_at" was deemed insignificant with a p-value of 0.407, indicating weak evidence of any relationship between age and its expression. Further analysis showed that the expression level of "1921_at" decreases slightly as age increases, evidenced by a negative coefficient for age (-0.002135). Confidence intervals for this gene's age coefficient range from -0.005 to 0.0007659, reinforcing the significance of the finding. Conversely, "37519_at" also shows a decrease with age, but the effect is even smaller (-0.001052) and not statistically significant, as reflected by its high p-value. 

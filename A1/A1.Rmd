@@ -1,0 +1,418 @@
+---
+title: "Assignment 1 - Steve Cheney"
+output: html_document
+date: "2024-04-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1
+
+```{r}
+my.sd <- function(input) {
+  # sd = sqrt(sum(value(i) - mean) / count - 1)
+  
+  # Set up sums and counter variables
+  count <- 0
+  squares_sum <-0
+  in_sum <- 0
+  
+  # Calc the sums for variance
+  for(i in input){
+    in_sum <- in_sum + i
+    squares_sum <- squares_sum + i^2
+    count <- count + 1
+  }
+  
+  mean <- in_sum / count
+  
+  # Parts of the variance
+  top <- (squares_sum - (count * mean^2))
+  bottom <- count - 1
+  
+  # Calc standard deviation
+  sd <- sqrt(top / bottom)
+   
+  return(sd)
+}
+
+vector <- c(10, 4, 65, 54, 12)
+print(paste("My.sd:", my.sd(vector)))
+print(paste("R sd:", sd(vector)))
+print(paste("My.sd == R sd:", my.sd(vector) == sd(vector)))
+```
+
+## Question 2
+
+### Excerpt 1
+
+```
+x<-sin(1);print(x);y<-Sin(2);print(y)
+x<-sin(1)
+print(x)
+y<-Sin(2)
+print(y)
+```
+
+The above code's intended functionality is to do the following:
+
+1. Set the variable `x` to the sin of 1 
+2. Print `x`
+3. Set the variable `y` to the sin of 2 
+4. Print `y`
+5. And then repeat steps 1-4
+
+But it runs with an error after printing `x` due to a syntax error:
+
+```
+[1] 0.841471
+Error in Sin(2) : could not find function "Sin"
+```
+
+The functions `Sin` should be `sin` all lowercase in order to properly call the funciton.
+
+### Excerpt 2
+
+```
+m <- matrix(c(1:5,NA,7,7,NA),
+nrow=3,ncol=3,byrow=T)
+print(m)
+
+for ( i in 1:dim(m)[[1]] ) {
+  mm <- sort(m[i,],na.last=c(NA,NA,T)[[i]])
+  for ( j in 1:(length(mm)-1) ) {
+    if ( mm[[j]]==mm[[j+1]] ) {
+      cat(i,j,mm[[j]],fill=T)
+    }
+  }
+}
+
+```
+
+The above code's intended functionality is intended to do the following:
+
+1. Create matrix `m` with:
+    - Vector of sequence numbers from 1-5, `NA` (missing value), 7, 7, `NA`
+    - With 3 rows
+    - With 3 columns
+    - And filling the matrix by row when `byrow` is set to `T` or `TRUE`
+2. Print the matrix
+3. Perform a for loop for each `i` in a sequence of numbers from 1 to the first element of the dimension vector of matrix `m`, or the number of rows in this case.
+    - Create variable `mm` and set it to:
+        - Sort the list elements of the matrix from the `i`th row to the end
+        - Set the way NA values are handled: row 1 = remove `NA` values; row 2 = remove `NA`; row 3 place `NA` values at the end and choose the proper handled based on `i` (the current row)
+    - Create a for loop for each `j` in a sequence of numbers from 1 to the length of `mm - 1`
+        - Check and see if the current element within the row (so the sorted column value) is equal to the next value without checking out of bounds.
+        - If `TRUE`:
+            - Concatenate the row number, the column number, the sorted column value at that column number, and split the output into multiple lines to avoid spillover of the default `cat` width
+
+But it runs with an error:
+
+```
+     [,1] [,2] [,3]
+[1,]    1    2    3
+[2,]    4    5   NA
+[3,]    7    7   NA
+3 1 7
+Error in if (mm[[j]] == mm[[j + 1]]) { : 
+  missing value where TRUE/FALSE needed
+```
+
+This is happening because we are attempting to compare a `NA` or missing value with another value during some comparisons. When this happens, R returns `NA`, then trys to evaluate the if statement with `NA`, which results in an error since it should be a `TRUE` or `FALSE` value.
+
+### Excerpt 3
+
+```{r}
+1:3 * 5:7
+1:3 %*% 5:7
+1:3 %*% t(5:7)
+```
+
+The above code above does the following:
+
+1. Performs multiplication of each item in the first vector with the corresponding item in the second vector
+2. Performs matrix multiplication, however because the listed items are 1d vectors and not matricies, it ends up performing `1*5+2*6+3*7`
+3. This performs a matrix multiplication of the first vector against the transposed column vector.
+
+## Question 3
+
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("ALL")
+library(Biobase)
+data(aaMap)
+ls()
+save(aaMap, file = "aaMap.RData")
+rm(aaMap)
+ls()
+load("aaMap.RData")
+ls()
+write.table(aaMap, file = "aaMap.csv", sep = ",", row.names = FALSE)
+```
+
+Variables:
+
+- name: Factor w/ 20 levels - amino acid name
+- let.1: Factor w/ 20 levels - one-letter code
+- let.3: Factor w/ 20 levels - three-letter code
+- scProp: Factor w/ 2 levels - side chain property at pH 7 (polar/nonpolar)
+- hyPhilic: logical - side chain is hydrophilic at pH 7
+- acidic: logical - side chain is acidic at pH 7
+
+```{r}
+new_aaMap <- read.csv("aaMap2.csv") # Knitting overwrites the changed file every time, copied, edited, and saving into new var
+summary(new_aaMap)
+```
+## Question 4
+
+### A
+
+```{r}
+library(ALL)
+data(ALL)
+
+expression <- exprs(ALL)
+
+if (!require("ggplot2")) install.packages("ggplot2")
+library(ggplot2)
+
+avg <- colMeans(expression)
+
+avg_df <- data.frame(PID = names(avg), AvgExp = avg)
+
+# Histogram
+ggplot(avg_df, aes(x = AvgExp)) +
+  geom_histogram(binwidth = 0.01, fill = "cadetblue", color = "black") +
+  ggtitle("Histogram of Average Gene Expression Levels per Patient") +
+  xlab("Average Expression Level") +
+  ylab("Count")
+
+# Boxplot
+ggplot(avg_df, aes(y = AvgExp)) +
+  geom_boxplot(fill = "cadetblue", color = "black") +
+  ggtitle("Boxplot of Average Gene Expression Levels per Patient") +
+  ylab("Average Expression Level")
+
+# Stem-and-leaf plot
+stem(avg_df$AvgExp, scale = 2)
+
+# Dotchart
+dotchart(avg_df$AvgExp, labels = row.names(avg_df), cex = 0.7,
+         main = "Dotchart of Average Gene Expression Levels per Patient",
+         xlab = "Average Expression Level")
+
+# Ascending Order Vis
+avg_df_sorted <- avg_df[order(avg_df$AvgExp),]
+# Dotchart
+dotchart(avg_df_sorted$AvgExp, labels = row.names(avg_df_sorted), cex = 0.7,
+         main = "Sorted Dotchart of Average Gene Expression Levels per Patient",
+         xlab = "Average Expression Level")
+```
+
+### B
+
+```{r}
+library(ALL)
+data(ALL)
+
+gene_expression <- exprs(ALL)
+
+if (!require("ggplot2")) install.packages("ggplot2")
+library(ggplot2)
+
+gene_avg <- rowMeans(gene_expression)
+gene_avg_df <- data.frame(GID = rownames(gene_expression), AvgExp = gene_avg)
+
+# Histogram
+ggplot(gene_avg_df, aes(x = AvgExp)) +
+  geom_histogram(binwidth = 0.05, fill = "cadetblue", color = "black") +
+  ggtitle("Histogram of Average Gene Expression Levels per Gene") +
+  xlab("Average Expression Level") +
+  ylab("Count")
+
+# Boxplot
+ggplot(gene_avg_df, aes(y = AvgExp)) +
+  geom_boxplot(fill = "cadetblue", color = "black") +
+  ggtitle("Boxplot of Average Gene Expression Levels per Gene") +
+  ylab("Average Expression Level")
+
+# Ascending Order Vis
+gene_avg_df_sorted <- gene_avg_df[order(gene_avg_df$AvgExp), ]
+
+# Dotchart
+dotchart(gene_avg_df_sorted$AvgExp, labels = gene_avg_df_sorted$GeneID, cex = 0.7,
+         main = "Sorted Dotchart of Average Gene Expression Levels per Gene",
+         xlab = "Average Expression Level")
+
+
+```
+
+### C
+
+```{r}
+library(ALL)
+data(ALL)
+
+expression <- exprs(ALL)
+
+avg <- colMeans(expression)
+
+mean(avg)
+median(avg)
+sd(avg)
+mad(avg)
+IQR(avg)
+fivenum(avg)
+quantile(avg, probs = c(0, 0.25, 0.5, 0.75, 1))
+```
+i. Mean: 5.624988
+ii. Median: 5.626497
+iii. Standard deviation (sd): 0.02262
+iv. Median absolute deviation (mad): 0.01849
+v. Interquartile range: 0.02798
+vi. Five number summary: 5.574651 5.609377 5.626497 5.637646 5.721977
+vii. Five number summary using quantile function: 5.574651 5.609603 5.626497 5.637583 5.721977 
+
+- Our results show us with a relatively small standard deviation in relation to the overall dataset.
+- We can see slightly different values for our quartiles for fivenum and quantile. This is because when an even number of data for fivenum, the lower hinge is the median of the lower half of data and the upper hinge is the median of the upper half of the data. With an even number of data and quantile is used, the lower quartile is the 25th percentile of the data and the upper quartile is the 75th percentile of the data. When we have an odd number of data points, they will both return the same value. With 100 patients being an even number, we're seeing these differences.
+
+```{r}
+patient.means <- avg
+
+library(ALL)
+data(ALL)
+
+expression <- exprs(ALL)
+
+avg <- rowMeans(expression)
+
+mean(avg)
+median(avg)
+sd(avg)
+mad(avg)
+IQR(avg)
+fivenum(avg)
+quantile(avg, probs = c(0, 0.25, 0.5, 0.75, 1))
+```
+
+i. Mean: 5.624988
+ii. Median: 5.49578
+iii. Standard deviation (sd): 1.789978
+iv. Median absolute deviation (mad): 1.955341
+v. Interquartile range: 2.635843
+vi. Five number summary: 2.593761 4.166640 5.495780 6.802484 13.570571 
+vii. Five number summary using quantile function: 2.593761 4.166640 5.495780 6.802484 13.570571 
+
+- The results here are notably different than our previous stats, most obviously because we are now grouping and averaging results based on a more closely related set of data with potentially less deviation. But, our standard deviation and IQR are larger because we are spreading our data points over individually more unique groups (genes) rather than a more closely related dataset (humans).
+
+### E
+
+As we have found in our previous work, `31811_r_at` has the lowest and `AFFX-hum_alu_at` has the highest average expression levels across all patients at 2.593761 and 13.570571 respectively.
+
+```{r}
+library(ALL)
+data(ALL)
+
+expression <- exprs(ALL)
+
+smallest_i <- which(expression == min(expression), arr.ind = TRUE)
+smallest_gene <- rownames(smallest_i)
+all_smallest_gene <- expression[c(smallest_gene),]
+
+greatest_i <- which(expression == max(expression), arr.ind = TRUE)
+greatest_gene <- rownames(greatest_i)
+all_greatest_gene <- expression[c(greatest_gene),]
+
+df <- data.frame(
+  all_smallest_gene,
+  all_greatest_gene
+)
+
+print("Smallest Gene stats")
+smallest_gene
+mean(df$all_smallest_gene)
+sd(df$all_smallest_gene)
+mad(df$all_smallest_gene)
+IQR(df$all_smallest_gene)
+summary(fivenum(df$all_smallest_gene))
+quantile(df$all_smallest_gene)
+
+print("Greatest Gene stats")
+greatest_gene
+mean(df$all_greatest_gene)
+sd(df$all_greatest_gene)
+mad(df$all_greatest_gene)
+IQR(df$all_greatest_gene)
+summary(fivenum(df$all_greatest_gene))
+quantile(df$all_greatest_gene)
+
+
+df_col <- reshape(df, 
+                  varying = list(names(df)[grep("all_smallest_gene|all_greatest_gene", names(df))]),
+                  v.names = "gene.exp",
+                  timevar = "pt.exp",
+                  times = names(df)[grep("all_smallest_gene|all_greatest_gene", names(df))],
+                  new.row.names = 1:1e5,  # Increase if not enough row names
+                  direction = "long")
+
+df_min <- data.frame(smallest_gene = df[["all_smallest_gene"]])
+
+df_max <- data.frame(greatest_gene = df[["all_greatest_gene"]])
+
+
+
+library(ggplot2)
+# Histogram
+ggplot(data = df_col, aes(x = gene.exp, fill = pt.exp)) +
+  geom_histogram(bins = 30) +
+  labs(fill = "Gene Type", x = "Gene Expression", title = "Histogram of Gene Expression")
+
+# Boxplot
+boxplot(gene.exp ~ pt.exp, data = df_col,
+        xlab = "Gene Type", ylab = "Gene Expression",
+        main = "Boxplot of Gene Expression by Gene Type",
+        col = "cadetblue")
+
+# Jitter Plot
+stripchart(gene.exp ~ pt.exp, data = df_col, vertical = TRUE,
+           method = "jitter", jitter = 0.1, pch = 20, col = rainbow(length(unique(df_col$pt.exp))),
+           main = "Jitter Plot of Gene Expression by Gene Type",
+           xlab = "Gene Type", ylab = "Gene Expression")
+
+# Stem-and-Leaf Plot
+stem(df_col$gene.exp, scale = 1.5, width = 50)
+
+# Sorting data frame 
+sorted_df <- df_col[order(df_col$gene.exp), ]
+ggplot(data = sorted_df, aes(x = 1:nrow(sorted_df), y = gene.exp, color = pt.exp)) +
+  geom_point(size = 2) +
+  labs(x = "Observation Order", y = "Gene Expression", color = "Gene Type", 
+       title = "Point Plot of Sorted Gene Expressions")
+```
+
+### F
+
+```{r}
+pt_avg <- colMeans(expression)
+pt_avg_df <- data.frame(PID = names(pt_avg), AvgExp = pt_avg)
+
+gene_avg <- rowMeans(expression)
+gene_avg_df <- data.frame(GID = rownames(gene_expression), AvgExp = gene_avg)
+
+# Patient Plot
+ggplot(
+  data = pt_avg_df, aes(x = pt_avg)
+) + geom_histogram(bins = 30)
+
+# Gene Plot
+ggplot(
+  data = gene_avg_df, aes(x = gene_avg )
+) + geom_histogram(bins = 30)
+```
+
+
+Let's look at the above histograms to answer our comparison. Gene expression per gene has a broader spread than per patient, which is more narrowly distributed. This difference highlights the variability in gene expression across genes versus individual patients. This variability suggests that some genes are highly expressed while others show minimal activity, reflecting complex genetic regulation. On the other hand, the narrower spread among patients indicates a more uniform expression pattern, suggesting physiological consistency across individuals.
