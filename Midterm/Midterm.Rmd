@@ -15,9 +15,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(readxl)
 library(dplyr)
+library(tidyr)
 library(ggplot2)
 library(gridExtra)
 library(stats)
+library(rsample)
 ```
 
 ```{r}
@@ -547,7 +549,68 @@ Jiang, D., Cope, A. L., Zhang, J., & Pennell, M. (2023). On the Decoupling of Ev
 
 ## Question 11
 ```{r}
+# t-test func
+paired_t_test <- function(index, data_s3, data_s4) {
+  # Extract data ensuring no data frame structure is carried over
+  data1 <- as.numeric(data_s3[index, ])
+  data2 <- as.numeric(data_s4[index, ])
+
+  # Check if there are enough non-NA observations
+  if (sum(!is.na(data1) & !is.na(data2)) < 2) {
+    return(NA)  # Return NA if not enough observations
+  }
+
+  # Perform the t-test
+  p_value <- t.test(data1, data2, paired = TRUE, var.equal = TRUE)$p.value
+  return(p_value)
+}
+
+
+# Resamples
+s3_resample <- bootstraps(s3_table, times = 4)
+s3_sample <- assessment(s3_resample$splits[[2]])
+s3_sample <- s3_sample[1:50,] # take subset to ensure no oob errors
+
+s4_resample <- bootstraps(s4_table, times = 4)
+s4_sample <- assessment(s4_resample$splits[[2]])
+s4_sample <- s4_sample[1:50,] # take subset to ensure no oob errors
+
+# Perform t-tests
+indices <- seq_len(nrow(s3_sample))  # Ensure s3_sample and s4_sample have the same number of rows
+
+pvals <- s3_sample %>%
+  reframe(
+    chimp_mrna_pvals = sapply(indices, paired_t_test, data_s3 = s3_sample[, 4:9], data_s4 = s4_sample[, 4:9]),
+    human_mrna_pvals = sapply(indices, paired_t_test, data_s3 = s3_sample[, 10:15], data_s4 = s4_sample[, 10:15]),
+    chimp_protein_pvals = sapply(indices, paired_t_test, data_s3 = s3_sample[, 16:18], data_s4 = s4_sample[, 16:18]),
+    human_protein_pvals = sapply(indices, paired_t_test, data_s3 = s3_sample[, 19:21], data_s4 = s4_sample[, 19:21])
+  )
+
+# Set up for plotting
+pvals_long <- pvals %>%
+  pivot_longer(
+    everything(),
+    names_to = "measurement_type",
+    values_to = "p_value"
+  )
+# Function to plot histograms
+create_histogram <- function(data, measurement_type) {
+  ggplot(data %>% filter(measurement_type == !!measurement_type), aes(x = p_value)) +
+    geom_histogram(bins = 30, fill = "blue", alpha = 0.7) +
+    labs(title = paste("pvals of", measurement_type),
+         x = "P-value",
+         y = "Frequency") +
+    theme_minimal()
+}
+
+# Create histograms for each measurement type
+hist_chimp_mrna <- create_histogram(pvals_long, "chimp_mrna_pvals")
+hist_human_mrna <- create_histogram(pvals_long, "human_mrna_pvals")
+hist_chimp_protein <- create_histogram(pvals_long, "chimp_protein_pvals")
+hist_human_protein <- create_histogram(pvals_long, "human_protein_pvals")
+
+grid.arrange(hist_chimp_mrna, hist_human_mrna, hist_chimp_protein, hist_human_protein, ncol = 2, nrow = 2)
 
 ```
 
-
+Like the other p-value data I analyzed, the mRNA results in both datasets showed a higher occurrence of significant p-values. Conversely, the protein data exhibited a more dispersed distribution of p-values, with fewer instances of significance. Notably, significant p-values were more prevalent in the mRNA data when comparing humans and chimps.
