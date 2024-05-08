@@ -20,6 +20,7 @@ library(ggplot2)
 library(gridExtra)
 library(stats)
 library(rsample)
+library("ALL")
 ```
 
 ```{r}
@@ -551,20 +552,16 @@ Jiang, D., Cope, A. L., Zhang, J., & Pennell, M. (2023). On the Decoupling of Ev
 ```{r}
 # t-test func
 paired_t_test <- function(index, data_s3, data_s4) {
-  # Extract data ensuring no data frame structure is carried over
   data1 <- as.numeric(data_s3[index, ])
   data2 <- as.numeric(data_s4[index, ])
-
   # Check if there are enough non-NA observations
   if (sum(!is.na(data1) & !is.na(data2)) < 2) {
     return(NA)  # Return NA if not enough observations
   }
-
   # Perform the t-test
   p_value <- t.test(data1, data2, paired = TRUE, var.equal = TRUE)$p.value
   return(p_value)
 }
-
 
 # Resamples
 s3_resample <- bootstraps(s3_table, times = 4)
@@ -614,3 +611,116 @@ grid.arrange(hist_chimp_mrna, hist_human_mrna, hist_chimp_protein, hist_human_pr
 ```
 
 Like the other p-value data I analyzed, the mRNA results in both datasets showed a higher occurrence of significant p-values. Conversely, the protein data exhibited a more dispersed distribution of p-values, with fewer instances of significance. Notably, significant p-values were more prevalent in the mRNA data when comparing humans and chimps.
+
+## Question 12
+### A
+```{r}
+data("ALL")
+p_data <- pData(ALL)
+g_data <- exprs(ALL)
+
+fusiondf <- data.frame(fusionprotein = p_data[,"fusion protein"],gene_1970s = g_data["1970_s_at",])
+fusion_table <- table(fusiondf$fusionprotein)
+
+lm_gene_protein <- lm(formula = gene_1970s ~ fusionprotein, data = fusiondf)
+anova(lm_gene_protein)
+
+lm_noint <- lm(formula = gene_1970s ~ fusionprotein + 0, data = fusiondf)
+
+lm_noint
+```
+I can now see we have the means for each category of 
+ fusionproteinp190  fusionproteinp190/p210       fusionproteinp210  
+                 3.705                   4.067                   4.011 
+```{r}
+anova(lm_noint)
+
+fusionproteinp190_mean <- summary(lm_noint)$coefficients[1,1]
+fusionproteinp190_p210_mean <- summary(lm_noint)$coefficients[2,1]
+fusionproteinp210_mean <- summary(lm_noint)$coefficients[3,1]
+fp_mean <- mean(fusiondf$gene_1970s[!is.na(fusiondf$fusionprotein)])
+
+# Print the values
+print(paste("Mean coefficient for fusion protein p190:", fusionproteinp190_mean))
+print(paste("Mean coefficient for fusion protein p190_p210:", fusionproteinp190_p210_mean))
+print(paste("Mean coefficient for fusion protein p210:", fusionproteinp210_mean))
+print(paste("Mean of gene expression for all fps:", fp_mean))
+```
+### B
+```{r}
+p190 <- fusiondf %>% filter(fusionprotein == "p190")
+p210 <- fusiondf %>% filter(fusionprotein == "p210")
+p190_210 <- fusiondf %>% filter(fusionprotein == "p190/p210")
+
+t.test(x = p190$gene_1970s, 
+       y = p210$gene_1970s, 
+       alternative = "two.sided", var.equal = TRUE)
+```
+We can see here that the sample estimates line up with our coefficients calculated before and that there is a statistically significant pvalue for both (even if they are different), but this is because ANOVA can compare more than two groups and tests if at least one group mean is different, while the t-test directly tests the difference between two specific groups.
+
+### C
+```{r}
+n_sim <- 1000  # Number of simulations
+set.seed(42)
+
+# Define the number of squared normal variables
+ns <- c(1, 3, 10)
+
+plots <- list()
+
+for (n in ns) {
+    # Simulate n_sim instances of n normal variables
+    norm_matrix <- matrix(rnorm(n_sim * n), nrow = n_sim, ncol = n)
+    
+    # Square all elements of the matrix and sum rows
+    chi_sums <- rowSums(norm_matrix^2)
+    
+    # Generate chi-squared variables directly
+    chi_vars <- rchisq(n_sim, df = n)
+    
+    # Prepare data for plotting
+    qq_data <- data.frame(Empirical = chi_sums, Theoretical = qchisq(ppoints(n_sim), df = n))
+    
+    # Create QQ plot
+    p <- ggplot(qq_data, aes(x = Theoretical, y = Empirical)) +
+        geom_point(alpha = 0.5) +  # Use points to plot the actual quantiles
+        geom_abline(slope = 1, intercept = 0, col = "red") +  # Ideal line y = x
+        labs(title = paste("QQ (df = ", n, ")"),
+             x = "Chi-squared",
+             y = "Sum of squares") +
+        theme_minimal()
+    
+    # Store the plot in the list
+    plots[[paste("n=", n)]] <- p
+}
+
+do.call(grid.arrange, c(plots, ncol = 2))
+```
+
+### D
+```{r}
+rs_df <- data.frame(sex = p_data$sex, remission = p_data$remission)
+rs_table <- table(rs_df)
+
+rs_chi <- chisq.test(rs_table, correct = F)
+
+crc_total <- sum(rs_table[,1]) #cr col
+rc_total <- sum(rs_table[,2]) # ref col
+mr_total <- sum(rs_table[2,]) # male row
+fr_total <- sum(rs_table[1,]) # female row
+full_total <- sum(crc_total, rc_total)
+
+e_crm <- crc_total*mr_total/full_total
+e_crf <- crc_total*fr_total/full_total
+e_refm <- rc_total*mr_total/full_total
+e_reff <- rc_total*fr_total/full_total
+
+
+# From the chi square test expected values
+rs_chi$expected
+
+print(paste("Expected count for CRM:", e_crm))
+print(paste("Expected count for CRF:", e_crf))
+print(paste("Expected count for REFM:", e_refm))
+print(paste("Expected count for REFF:", e_reff))
+```
