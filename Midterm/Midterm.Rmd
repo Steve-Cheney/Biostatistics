@@ -428,4 +428,82 @@ S3 Sample: There were 45 significant mRNA differences and 26 significant protein
 
 S4 Sample: Similar to S3, there were 49 significant mRNA differences, indicating a slightly higher variability or response at the genetic transcription level compared to S3. The number of significant protein differences remains the same as in S3, at 26. This consistency in protein differences, despite a slight increase in mRNA differences, further supports the idea that not all changes at the mRNA level have a corresponding impact at the protein level.
 
+## Question 9 
+
+```{r}
+
+#human_mRNAs <- 10:15
+#chimp_mRNAs <- 4:9
+#human_proteins <- 19:21
+#chimp_proteins <- 16:18
+
+# Vectors for storing p
+p_values_ttest_mRNA_s3 <- numeric(nrow(s3_table))
+p_values_anova_mRNA_s3 <- numeric(nrow(s3_table))
+p_values_ttest_protein_s3 <- numeric(nrow(s3_table))
+p_values_anova_protein_s3 <- numeric(nrow(s3_table))
+
+# T-test with no variance
+t_test_novar <- function(x, y) {
+  t.test(x = x, y = y,
+         alternative = "two.sided", 
+         var.equal = FALSE, 
+         conf.level = 0.95)$p.value
+}
+
+s3_table <- s3_table %>%
+  mutate(
+    mrna_pval_nev = apply(s3_table[,4:9], 1, FUN = t_test_novar, 
+                          y = s3_table[,10:15]),
+    protein_pval_nev = apply(s3_table[,16:18], 1, FUN = t_test_novar, 
+                           y = s3_table[,19:21])
+  )
+
+s4_table <- s4_table %>%
+  mutate(
+    mrna_pval_nev = apply(s4_table[,4:9], 1, FUN = t_test_novar, 
+                          y = s4_table[,10:15]),
+    protein_pval_nev = apply(s4_table[,16:18], 1, FUN = t_test_novar, 
+                           y = s4_table[,19:21])
+  )
+
+mrna_nev_s3 <- s3_table %>%
+  filter(mrna_pval_nev < 0.05) %>%
+  count()
+protein_nev_s3 <- s3_table %>%
+  filter(protein_pval_nev < 0.05) %>%
+  count()
+
+mrna_nev_s4 <- s4_table %>%
+  filter(mrna_pval_nev < 0.05) %>%
+  count()
+mrna_nev_s4 <- s4_table %>%
+  filter(protein_pval_nev < 0.05) %>%
+  count()
+
+nev_both <- data.frame(mrna_nev_s3, protein_nev_s3, mrna_nev_s4, mrna_nev_s4)
+names(nev_both) <- c('MRNA_NEV_s3','Protein_NEV_s3','MRNA_NEV_s4','Protein_NEV_s4')
+nev_both
+
+lin_s3 <- lm(formula = s3_table$mrna_diff ~ s3_table$protein_diff, data = s3_table)
+lin_s3
+anova(lin_s3)
+
+lin_s4 <- lm(formula = s4_table$mrna_diff ~ s4_table$protein_diff, data = s4_table)
+lin_s4
+anova(lin_s4)
+```
+Old equal variance pval counts:
+Number of significant mRNA differences in S3 at p < 0.05: 45
+Number of significant protein differences in S3 at p < 0.05: 26
+Number of significant mRNA differences in S4 at p < 0.05: 49
+Number of significant protein differences in S4 at p < 0.05: 26
+
+
+The analysis comparing the counts of statistically significant differences between no equal variance (NEV) t-tests and equal variance t-tests across mRNA and protein expression levels in S3 and S4 samples reveals substantial variations. For the NEV t-tests, the counts in S3 were considerably higher for mRNA with 117 significant differences compared to 45 using the equal variance assumption, indicating more sensitivity or detection of differences when variance inequality is assumed. However, for protein in S3, the significant differences under NEV were fewer (18) compared to 26 with equal variance, suggesting that the equal variance assumption might be more sensitive or appropriate in some protein comparisons. The pattern is starkly different in S4, where the number of significant differences for both mRNA and protein is drastically lower (14 each) in NEV compared to equal variance (49 and 26, respectively), suggesting a considerable influence of the variance assumption on the detection of significant differences. For the analysis within this specific context, I am not 100% sure which would be more beneficial to the study, however based on the relative uniformity from previous analyses, an equal variance may be more appropriate here.
+
+## Question 10
+```{r}
+
+```
 
