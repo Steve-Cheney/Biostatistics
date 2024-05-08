@@ -504,6 +504,50 @@ The analysis comparing the counts of statistically significant differences betwe
 
 ## Question 10
 ```{r}
+common_genes <- intersect(s3_table$refseq_id, s4_table$refseq_id)
+# Filter for only the common genes and merge
+s3_common <- s3_table[s3_table$refseq_id %in% common_genes, ]
+s4_common <- s4_table[s4_table$refseq_id %in% common_genes, ]
+merged_data <- merge(s3_common, s4_common, by = "refseq_id", suffixes = c("_s3", "_s4"))
+
+
+# Plot mean human mRNA levels
+mhm <- ggplot(merged_data, aes(x = human_mrna_mean_s3, y = human_mrna_mean_s4)) +
+  geom_point() +
+  labs(title = "Mean Human mRNA Levels",
+       x = "S3",
+       y = "S4")
+
+# Plot mean human protein levels
+mhp <- ggplot(merged_data, aes(x = human_protein_mean_s3, y = human_protein_mean_s4)) +
+  geom_point() +
+  labs(title = "Mean Human Protein Levels",
+       x = "S3",
+       y = "S4")
+
+# Plot mean chimp mRNA levels
+mcm <- ggplot(merged_data, aes(x = chimp_mrna_mean_s3, y = chimp_mrna_mean_s4)) +
+  geom_point() +
+  labs(title = "Mean Chimp mRNA Levels",
+       x = "S3",
+       y = "S4")
+
+# Plot mean chimp protein levels
+mcp <- ggplot(merged_data, aes(x = chimp_protein_mean_s3, y = chimp_protein_mean_s4)) +
+  geom_point() +
+  labs(title = "Mean Chimp Protein Levels",
+       x = "S3",
+       y = "S4")
+
+grid.arrange(mhm, mhp, mcm, mcp, ncol = 2, nrow = 2)
+```
+It would make sense that the mRNA levels are almost directly correlated. Since it is essentially comparing a subset of a genome, we'd expect these species to have similar mRNA across samples. The same can't be said for proteins expression, however, as we know that expression levels vary vastly from sample to sample, which is what essentially differentiates one subject from another.
+
+Jiang, D., Cope, A. L., Zhang, J., & Pennell, M. (2023). On the Decoupling of Evolutionary Changes in mRNA and Protein Levels. Molecular biology and evolution, 40(8), msad169. https://doi.org/10.1093/molbev/msad169
+
+## Question 11
+```{r}
 
 ```
+
 
