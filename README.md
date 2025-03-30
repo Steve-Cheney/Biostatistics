@@ -1,3 +1,3 @@
-# Biostatistics Course for MSc program
-### Biomedical Statistics in R
-### RBIF111
+# Biostatistics
+
+Graduate coursework for Biomedical Statistics in R
